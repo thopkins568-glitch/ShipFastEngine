@@ -1,13 +1,13 @@
 import { Entity } from '../../src/core/Entity.js';
 import { Input } from '../../src/input/Input.js';
 import { Renderer } from '../../src/render/Renderer.js';
-import { AssetManager } from '../../src/render/AssetManager.js';
+import { Animation } from '../../src/render/Animation.js';
 import { clamp } from '../../src/utils/Utils.js';
 
 const SPEED = 200;
 
 export class PlayerEntity extends Entity {
-    spriteName = 'player_run';
+    private animation: Animation;
 
     constructor(
         x: number,
@@ -15,13 +15,15 @@ export class PlayerEntity extends Entity {
         width: number,
         height: number,
         private boundsWidth: number,
-        private boundsHeight: number
+        private boundsHeight: number,
+        spriteName = 'player_run'
     ) {
         super();
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
+        this.animation = new Animation(spriteName, 8); // default 8 FPS
     }
 
     update(dt: number) {
@@ -46,13 +48,11 @@ export class PlayerEntity extends Entity {
             this.x = clamp(this.x, 0, this.boundsWidth - this.width);
             this.y = clamp(this.y, 0, this.boundsHeight - this.height);
         }
+
+        this.animation.update(dt);
     }
 
     render(ctx: CanvasRenderingContext2D) {
-        if (AssetManager.getTexture(this.spriteName)) {
-            Renderer.drawSprite(ctx, this.spriteName, this.x, this.y, this.width, this.height);
-        } else {
-            Renderer.drawRect(ctx, this.x, this.y, this.width, this.height, 'magenta');
-        }
+        this.animation.draw(ctx, this.x, this.y, this.width, this.height);
     }
 }
