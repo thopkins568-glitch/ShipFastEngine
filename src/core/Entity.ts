@@ -1,61 +1,45 @@
-// src/core/Entity.ts
-
 export class Entity {
-    public x: number;
-    public y: number;
-    public width: number;
-    public height: number;
-    public isSolid: boolean = false;
-    public alpha: number = 1;
-    public flipX: boolean = false;
-    public tag: string = '';
-    public _shouldRemove: boolean = false;
+  public x: number;
+  public y: number;
+  public width: number;
+  public height: number;
+  public isSolid = false;
+  public alpha = 1;
+  public flipX = false;
+  public tag?: string;
+  public tags: string[] = [];
+  public _shouldRemove = false;
 
-    constructor(
-        public assetKey: string,
-        x: number,
-        y: number,
-        width: number,
-        height: number
-    ) {
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = height;
-    }
+  constructor(
+    public assetKey: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ) {
+    this.x = x;
+    this.y = y;
+    this.width = width;
+    this.height = height;
+  }
 
-    public setAsset(key: string): void {
-        this.assetKey = key;
-    }
+  setAsset(key: string) {
+    this.assetKey = key;
+  }
 
-    public destroy(): void {
-        this._shouldRemove = true;
-    }
+  hasTag(tag: string): boolean {
+    return this.tag === tag || this.tags.includes(tag);
+  }
 
-    public update(dt: number, scene?: any): void {}
+  update(dt: number, scene?: any): void {}
 
-    public render(ctx: CanvasRenderingContext2D, assets?: any): void {
-        if (assets && assets[this.assetKey]) {
-            ctx.save();
-            ctx.globalAlpha = this.alpha;
+  render(ctx: CanvasRenderingContext2D, assets: any): void {
+    const img = assets?.[this.assetKey];
+    if (!img) return;
 
-            if (this.flipX) {
-                ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
-                ctx.scale(-1, 1);
-                ctx.translate(-(this.x + this.width / 2), -(this.y + this.height / 2));
-            }
+    ctx.save();
+    ctx.globalAlpha = this.alpha;
 
-            ctx.drawImage(
-                assets[this.assetKey],
-                this.x,
-                this.y,
-                this.width,
-                this.height
-            );
-            ctx.restore();
-        } else {
-            ctx.fillStyle = '#FF00FF';
-            ctx.fillRect(this.x, this.y, this.width, this.height);
-        }
-    }
-}
+    if (this.flipX) {
+      ctx.translate(this.x + this.width / 2, 0);
+      ctx.scale
