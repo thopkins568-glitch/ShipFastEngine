@@ -1,45 +1,28 @@
-export class Entity {
-  public x: number;
-  public y: number;
-  public width: number;
-  public height: number;
-  public isSolid = false;
-  public alpha = 1;
-  public flipX = false;
-  public tag?: string;
-  public tags: string[] = [];
-  public _shouldRemove = false;
+// src/core/Entity.ts // // Base Entity class for ShipFast Engine // --------------------------------- // An Entity is a simple, explicit unit of behavior. // It knows how to update itself and how to render itself. // It does NOT know about the Engine, Scene, Input, or other entities.
 
-  constructor(
-    public assetKey: string,
-    x: number,
-    y: number,
-    width: number,
-    height: number
-  ) {
-    this.x = x;
-    this.y = y;
-    this.width = width;
-    this.height = height;
-  }
+export abstract class Entity { /** Whether this entity should be updated and rendered */ active: boolean = true;
 
-  setAsset(key: string) {
-    this.assetKey = key;
-  }
+/** Z-order for rendering (higher renders later) */
+z: number = 0;
 
-  hasTag(tag: string): boolean {
-    return this.tag === tag || this.tags.includes(tag);
-  }
+constructor(z: number = 0) {
+    this.z = z;
+}
 
-  update(dt: number, scene?: any): void {}
+/**
+ * Update the entity's state.
+ * @param dt Delta time in seconds
+ */
+update(dt: number): void {
+    // Intentionally empty
+}
 
-  render(ctx: CanvasRenderingContext2D, assets: any): void {
-    const img = assets?.[this.assetKey];
-    if (!img) return;
+/**
+ * Render the entity.
+ * @param ctx Canvas 2D rendering context
+ */
+render(ctx: CanvasRenderingContext2D): void {
+    // Intentionally empty
+}
 
-    ctx.save();
-    ctx.globalAlpha = this.alpha;
-
-    if (this.flipX) {
-      ctx.translate(this.x + this.width / 2, 0);
-      ctx.scale
+                             }
