@@ -1,27 +1,23 @@
 // src/core/Entity.ts
 
 export class Entity {
-    protected assetKey: string;
-
     public x: number;
     public y: number;
     public width: number;
     public height: number;
-
-    public dx = 0;
-    public dy = 0;
-    public isSolid = true;
-    public alpha = 1;
-    public flipX = false;
+    public isSolid: boolean = false;
+    public alpha: number = 1;
+    public flipX: boolean = false;
+    public tag: string = '';
+    public _shouldRemove: boolean = false;
 
     constructor(
-        assetKey: string,
+        public assetKey: string,
         x: number,
         y: number,
         width: number,
         height: number
     ) {
-        this.assetKey = assetKey;
         this.x = x;
         this.y = y;
         this.width = width;
@@ -32,18 +28,34 @@ export class Entity {
         this.assetKey = key;
     }
 
-    public update(_dt: number): void {}
+    public destroy(): void {
+        this._shouldRemove = true;
+    }
 
-    public render(
-        ctx: CanvasRenderingContext2D,
-        assets: any
-    ): void {
-        const img = assets.get(this.assetKey);
-        if (!img) return;
+    public update(dt: number, scene?: any): void {}
 
-        ctx.save();
-        ctx.globalAlpha = this.alpha;
-        ctx.drawImage(img, this.x, this.y, this.width, this.height);
-        ctx.restore();
+    public render(ctx: CanvasRenderingContext2D, assets?: any): void {
+        if (assets && assets[this.assetKey]) {
+            ctx.save();
+            ctx.globalAlpha = this.alpha;
+
+            if (this.flipX) {
+                ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+                ctx.scale(-1, 1);
+                ctx.translate(-(this.x + this.width / 2), -(this.y + this.height / 2));
+            }
+
+            ctx.drawImage(
+                assets[this.assetKey],
+                this.x,
+                this.y,
+                this.width,
+                this.height
+            );
+            ctx.restore();
+        } else {
+            ctx.fillStyle = '#FF00FF';
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
     }
 }
