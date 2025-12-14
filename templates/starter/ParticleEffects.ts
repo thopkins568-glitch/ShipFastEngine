@@ -1,81 +1,38 @@
 // templates/starter/ParticleEffect.ts
 
 import { Entity } from '../../src/core/Entity';
-import { Scene } from '../../src/core/Scene';
 
-const PARTICLE_LIFETIME = 800;
-
-class ParticlePool {
-    private pool: ParticleEffect[] = [];
-
-    public create(
-        x: number,
-        y: number,
-        type: string
-    ): ParticleEffect {
-        const particle = this.pool.pop();
-        if (particle) {
-            particle.reset(x, y, type);
-            return particle;
-        }
-        return new ParticleEffect(x, y, type);
-    }
-
-    public return(particle: ParticleEffect): void {
-        (particle as any).sceneRef = undefined;
-        this.pool.push(particle);
-    }
-}
-
-const pool = new ParticlePool();
+const LIFETIME = 500;
 
 export class ParticleEffect extends Entity {
-    private timer = 0;
-    private sceneRef?: Scene;
+    private timer: number = 0;
 
-    constructor(
-        x: number,
-        y: number,
-        assetKey: string
-    ) {
-        super(assetKey, x - 16, y - 16, 32, 32);
-        this.isSolid = false;
+    private constructor(x: number, y: number, type: string) {
+        super(type, x - 16, y - 16, 32, 32);
         this.alpha = 1;
+        this.tag = 'particle';
     }
 
-    public static create(
-        x: number,
-        y: number,
-        type: string
-    ): ParticleEffect {
-        return pool.create(x, y, type);
-    }
-
-    public reset(
-        x: number,
-        y: number,
-        assetKey: string
-    ): void {
-        this.x = x - 16;
-        this.y = y - 16;
-        this.setAsset(assetKey);
-        this.timer = 0;
-        this.alpha = 1;
-    }
-
-    public setScene(scene: Scene): void {
-        this.sceneRef = scene;
+    public static create(x: number, y: number, type: string): ParticleEffect {
+        const effect = new ParticleEffect(x, y, type);
+        return effect;
     }
 
     public update(dt: number): void {
         this.timer += dt;
-
-        const t = this.timer / PARTICLE_LIFETIME;
-        this.alpha = 1 - t * t;
-
-        if (this.timer >= PARTICLE_LIFETIME && this.sceneRef) {
-            this.sceneRef.removeEntity(this);
-            pool.return(this);
+        if (this.timer >= LIFETIME) {
+            this._shouldRemove = true;
+        } else {
+            const t = this.timer / LIFETIME;
+            this.alpha = 1 - t * t;
         }
     }
+
+    public reset(x: number, y: number, type: string): void {
+        this.x = x - 16;
+        this.y = y - 16;
+        this.alpha = 1;
+        this.timer = 0;
+        this.setAsset(type);
     }
+}
