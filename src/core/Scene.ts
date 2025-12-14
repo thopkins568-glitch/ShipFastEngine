@@ -1,87 +1,49 @@
-import { Entity } from './Entity.js';
-import { isColliding } from '../utils/Utils.js'; // New Import
+// src/core/Scene.ts
 
+import { Entity } from './Entity';
+
+/**
+ * Represents a game scene containing entities and managing their lifecycle.
+ */
 export class Scene {
-    protected entities: Entity[] = [];
-    protected solidEntities: Entity[] = []; // New cache for solid entities
+    public entities: Entity[] = [];
+    public name: string = '';
 
-    onEnter(): void {}
-    onExit(): void {}
-
-    addEntity(entity: Entity) {
+    /**
+     * Adds an entity to the scene.
+     * Safely injects scene reference if supported by the entity.
+     */
+    public addEntity(entity: Entity): void {
         this.entities.push(entity);
-        if (entity.isSolid) {
-            this.solidEntities.push(entity);
+
+        if (typeof (entity as any).setScene === 'function') {
+            (entity as any).setScene(this);
         }
     }
 
-    update(dt: number) {
-        for (const e of this.entities) {
-            // 1. Store old position before moving
-            const oldX = e.x;
-            const oldY = e.y;
-            
-            // 2. Perform base kinematic update
-            e.update(dt); 
-            
-            // 3. Collision Check and Resolution
-            if (!e.isSolid) { // Only dynamic entities need collision resolution against solids
-                this.resolveCollisions(e, oldX, oldY);
-            }
+    /**
+     * Removes an entity from the scene.
+     */
+    public removeEntity(entity: Entity): void {
+        const index = this.entities.indexOf(entity);
+        if (index !== -1) {
+            this.entities.splice(index, 1);
         }
     }
 
-    private resolveCollisions(entity: Entity, oldX: number, oldY: number) {
-        for (const solid of this.solidEntities) {
-            if (entity === solid) continue; // Don't check against self
-
-            if (isColliding(entity.x, entity.y, entity.width, entity.height,
-                            solid.x, solid.y, solid.width, solid.height)) {
-                
-                // Collision detected! Resolve by pushing the entity out.
-                let dx = 0;
-                let dy = 0;
-
-                // --- Resolution on Y-axis (Vertical Collision) ---
-                // If the entity wasn't colliding vertically before the move, resolve Y first
-                if (!isColliding(entity.x, oldY, entity.width, entity.height, 
-                                 solid.x, solid.y, solid.width, solid.height)) {
-                    
-                    if (entity.vy > 0) { // Moving Down (Landing)
-                        dy = solid.y - (entity.y + entity.height); // Push up
-                        entity.y += dy;
-                    } else if (entity.vy < 0) { // Moving Up (Hitting head)
-                        dy = (solid.y + solid.height) - entity.y; // Push down
-                        entity.y += dy;
-                    }
-                    entity.vy = 0; // Stop vertical movement
-                }
-                
-                // --- Resolution on X-axis (Horizontal Collision) ---
-                // If collision still exists or occurred horizontally
-                if (isColliding(entity.x, entity.y, entity.width, entity.height,
-                                solid.x, solid.y, solid.width, solid.height)) {
-
-                    if (entity.vx > 0) { // Moving Right
-                        dx = solid.x - (entity.x + entity.width); // Push left
-                        entity.x += dx;
-                    } else if (entity.vx < 0) { // Moving Left
-                        dx = (solid.x + solid.width) - entity.x; // Push right
-                        entity.x += dx;
-                    }
-                    entity.vx = 0; // Stop horizontal movement
-                }
-                
-                // Inform both entities about the collision
-                entity.onCollide(solid, dx, dy);
-                solid.onCollide(entity, -dx, -dy);
-            }
-        }
+    /**
+     * Gets all entities overlapping with a given entity.
+     */
+    public getOverlap(entity: Entity): Entity[] {
+        return this.entities.filter(e => e !== entity && this.checkOverlap(entity, e));
     }
 
-    render(ctx: CanvasRenderingContext2D) {
-        this.entities
-            .sort((a, b) => a.z - b.z)
-            .forEach(e => e.render(ctx));
+    private checkOverlap(a: Entity, b: Entity): boolean {
+        return (
+            a.x < b.x + b.width &&
+            a.x + a.width > b.x &&
+            a.y < b.y + b.height &&
+            a.y + a.height > b.y
+        );
     }
-                                 }
+}
