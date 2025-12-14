@@ -1,67 +1,70 @@
 // src/core/Scene.ts
+//
+// Clean, minimal Scene class for ShipFast Engine
+// --------------------------------------------
+// Owns and orchestrates entities only.
+// Does NOT handle input, physics, collisions, particles, tagging, or queries.
 
 import { Entity } from './Entity';
-import { ParticleEffect } from '../../templates/starter/ParticleEffect';
 
 export class Scene {
-    public entities: Entity[] = [];
-    public name: string = '';
-    public canvas: HTMLCanvasElement;
+    /** All entities currently in the scene */
+    private entities: Entity[] = [];
 
-    constructor(canvas?: HTMLCanvasElement) {
-        this.canvas = canvas || document.createElement('canvas');
+    /** Optional lifecycle hooks */
+    onStart?(): void;
+    onEnd?(): void;
+
+    constructor() {
+        // Intentionally empty — scene has no external dependencies here
     }
 
-    public addEntity(entity: Entity): void {
+    /**
+     * Add an entity to the scene.
+     */
+    addEntity(entity: Entity): void {
         this.entities.push(entity);
-        if ('setScene' in entity && typeof (entity as any).setScene === 'function') {
-            (entity as any).setScene(this);
-        }
     }
 
-    public removeEntity(entity: Entity): void {
+    /**
+     * Remove an entity from the scene.
+     */
+    removeEntity(entity: Entity): void {
         const index = this.entities.indexOf(entity);
-        if (index !== -1) this.entities.splice(index, 1);
+        if (index >= 0) {
+            this.entities.splice(index, 1);
+        }
     }
 
-    public addParticleEffect(x: number, y: number, effectType: string = 'sparkle'): void {
-        const effect = ParticleEffect.create(x, y, effectType);
-        this.addEntity(effect);
-    }
-
-    public getOverlappingEntities(entity: Entity): Entity[] {
-        return this.entities.filter(e => e !== entity && this.checkCollision(entity, e));
-    }
-
-    private checkCollision(a: Entity, b: Entity): boolean {
-        return !(
-            a.x + a.width < b.x ||
-            a.x > b.x + b.width ||
-            a.y + a.height < b.y ||
-            a.y > b.y + b.height
-        );
-    }
-
-    public getCanvasBounds(): { width: number; height: number } {
-        return { width: this.canvas.width, height: this.canvas.height };
-    }
-
-    public findEntityByTag(tag: string): Entity | undefined {
-        return this.entities.find(e => e.tag === tag);
-    }
-
-    public update(dt: number): void {
+    /**
+     * Update all active entities.
+     * @param dt Delta time in seconds
+     */
+    update(dt: number): void {
+        // Use a copy to allow safe removal during update
         const entitiesToUpdate = [...this.entities];
+
         for (const entity of entitiesToUpdate) {
-            if (!entity._shouldRemove) entity.update(dt, this);
+            if (entity.active) {
+                entity.update(dt);
+            }
         }
 
-        this.entities = this.entities.filter(e => !e._shouldRemove);
+        // Clean up any entities that marked themselves for removal
+        this.entities = this.entities.filter(entity => !entity.markedForRemoval);
     }
 
-    public render(ctx: CanvasRenderingContext2D, assets: any): void {
-        for (const entity of this.entities) {
-            entity.render(ctx, assets);
+    /**
+     * Render all active entities, sorted by z-order (lower z first).
+     * @param ctx Canvas 2D rendering context
+     */
+    render(ctx: CanvasRenderingContext2D): void {
+        const sorted = [...this.entities].sort((a, b) => a.z - b.z);
+
+        for (const entity of sorted) {
+            if (entity.active) {
+                entity.render(ctx);
+            }
         }
     }
 }
