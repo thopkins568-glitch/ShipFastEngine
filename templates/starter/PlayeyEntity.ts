@@ -1,58 +1,84 @@
-import { Entity } from '../../src/core/Entity.js';
-import { Input } from '../../src/input/Input.js';
-import { Renderer } from '../../src/render/Renderer.js';
-import { Animation } from '../../src/render/Animation.js';
-import { clamp } from '../../src/utils/Utils.js';
+// templates/starter/PlayerEntity.ts
 
-const SPEED = 200;
+import { Entity } from '../../src/core/Entity';
+import { Scene } from '../../src/core/Scene';
+import { Input } from '../../src/input/Input';
+import { Animation } from '../../src/render/Animation';
+import { CollectibleEntity } from './CollectibleEntity';
 
 export class PlayerEntity extends Entity {
-    private animation: Animation;
+    private gravity = 900;
+    private jumpVelocity = 400;
+    private moveSpeed = 200;
 
-    constructor(
-        x: number,
-        y: number,
-        width: number,
-        height: number,
-        private boundsWidth: number,
-        private boundsHeight: number,
-        spriteName = 'player_run'
-    ) {
-        super();
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = height;
-        this.animation = new Animation(spriteName, 8); // default 8 FPS
+    private isGrounded = false;
+    private scene?: Scene;
+
+    private currentAnim: Animation | null = null;
+    private animations: Record<string, Animation> = {};
+
+    constructor(x: number, y: number) {
+        super('player_run', x, y, 32, 64);
+        this.isSolid = true;
+
+        this.animations.idle = new Animation('player_run', 0, 1, 100);
+        this.animations.run = new Animation('player_run', 1, 4, 100);
+        this.animations.jump = new Animation('player_run', 5, 1, 100);
+        this.animations.fall = new Animation('player_run', 6, 1, 100);
+
+        this.currentAnim = this.animations.idle;
     }
 
-    update(dt: number) {
-        this.vx = 0;
-        this.vy = 0;
+    public setScene(scene: Scene): void {
+        this.scene = scene;
+    }
 
-        if (Input.isKeyDown('ArrowLeft') || Input.isKeyDown('a')) this.vx = -SPEED;
-        if (Input.isKeyDown('ArrowRight') || Input.isKeyDown('d')) this.vx = SPEED;
-        if (Input.isKeyDown('ArrowUp') || Input.isKeyDown('w')) this.vy = -SPEED;
-        if (Input.isKeyDown('ArrowDown') || Input.isKeyDown('s')) this.vy = SPEED;
+    public update(dt: number): void {
+        if (!this.scene) return;
 
-        super.update(dt);
+        const dtSeconds = dt / 1000;
+        this.dx = 0;
 
-        this.x = clamp(this.x, 0, this.boundsWidth - this.width);
-        this.y = clamp(this.y, 0, this.boundsHeight - this.height);
-
-        const touch = Input.getActiveTouches()[0];
-        if (touch) {
-            this.x = touch.x - this.width / 2;
-            this.y = touch.y - this.height / 2;
-
-            this.x = clamp(this.x, 0, this.boundsWidth - this.width);
-            this.y = clamp(this.y, 0, this.boundsHeight - this.height);
+        if (Input.isKeyDown('ArrowLeft') || Input.isKeyDown('a')) {
+            this.dx = -this.moveSpeed;
+            this.flipX = true;
+        } else if (Input.isKeyDown('ArrowRight') || Input.isKeyDown('d')) {
+            this.dx = this.moveSpeed;
+            this.flipX = false;
         }
 
-        this.animation.update(dt);
+        if (Input.isKeyJustPressed('Space') && this.isGrounded) {
+            this.dy = -this.jumpVelocity;
+            this.isGrounded = false;
+        }
+
+        this.dy += this.gravity * dtSeconds;
+        this.dy = Math.min(this.dy, 600);
+
+        this.x += this.dx * dtSeconds;
+        this.y += this.dy * dtSeconds;
+
+        const overlaps = this.scene.getOverlap(this);
+        const pickups = overlaps.filter(e => e instanceof CollectibleEntity) as CollectibleEntity[];
+
+        for (const c of pickups) {
+            c.onPickup(this.scene);
+        }
+
+        if (!this.isGrounded) {
+            this.currentAnim = this.dy < 0 ? this.animations.jump : this.animations.fall;
+        } else if (this.dx !== 0) {
+            this.currentAnim = this.animations.run;
+        } else {
+            this.currentAnim = this.animations.idle;
+        }
+
+        this.currentAnim?.update(dt);
     }
 
-    render(ctx: CanvasRenderingContext2D) {
-        this.animation.draw(ctx, this.x, this.y, this.width, this.height);
+    public render(ctx: CanvasRenderingContext2D, assets: any): void {
+        this.currentAnim
+            ? this.currentAnim.render(ctx, assets, this.x, this.y, this.width, this.height, this.flipX)
+            : super.render(ctx, assets);
     }
 }
