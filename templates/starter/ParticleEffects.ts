@@ -8,10 +8,17 @@ const PARTICLE_LIFETIME = 800;
 class ParticlePool {
     private pool: ParticleEffect[] = [];
 
-    public create(x: number, y: number, effectType: string): ParticleEffect {
-        const particle = this.pool.pop() ?? new ParticleEffect(x, y, effectType);
-        particle.reset(x, y, effectType);
-        return particle;
+    public create(
+        x: number,
+        y: number,
+        type: string
+    ): ParticleEffect {
+        const particle = this.pool.pop();
+        if (particle) {
+            particle.reset(x, y, type);
+            return particle;
+        }
+        return new ParticleEffect(x, y, type);
     }
 
     public return(particle: ParticleEffect): void {
@@ -20,26 +27,38 @@ class ParticlePool {
     }
 }
 
-const particlePool = new ParticlePool();
+const pool = new ParticlePool();
 
 export class ParticleEffect extends Entity {
-    private lifetime = PARTICLE_LIFETIME;
     private timer = 0;
     private sceneRef?: Scene;
 
-    constructor(x: number, y: number, effectType = 'sparkle') {
-        super(effectType, x - 16, y - 16, 32, 32);
+    constructor(
+        x: number,
+        y: number,
+        assetKey: string
+    ) {
+        super(assetKey, x - 16, y - 16, 32, 32);
         this.isSolid = false;
         this.alpha = 1;
     }
 
-    static create(x: number, y: number, effectType: string): ParticleEffect {
-        return particlePool.create(x, y, effectType);
+    public static create(
+        x: number,
+        y: number,
+        type: string
+    ): ParticleEffect {
+        return pool.create(x, y, type);
     }
 
-    public reset(x: number, y: number, effectType: string): void {
+    public reset(
+        x: number,
+        y: number,
+        assetKey: string
+    ): void {
         this.x = x - 16;
         this.y = y - 16;
+        this.setAsset(assetKey);
         this.timer = 0;
         this.alpha = 1;
     }
@@ -51,12 +70,12 @@ export class ParticleEffect extends Entity {
     public update(dt: number): void {
         this.timer += dt;
 
-        const t = Math.min(1, this.timer / this.lifetime);
-        this.alpha = Math.max(0, 1 - t * t);
+        const t = this.timer / PARTICLE_LIFETIME;
+        this.alpha = 1 - t * t;
 
-        if (this.timer >= this.lifetime && this.sceneRef) {
+        if (this.timer >= PARTICLE_LIFETIME && this.sceneRef) {
             this.sceneRef.removeEntity(this);
-            particlePool.return(this);
+            pool.return(this);
         }
     }
-}
+    }
