@@ -1,80 +1,37 @@
 // src/render/Animation.ts
 
 export class Animation {
-    private timer = 0;
-    private currentFrame = 0;
+    private currentFrame: number = 0;
+    private timer: number = 0;
 
-    constructor(
-        private assetKey: string,
-        private startFrame: number,
-        private frameCount: number,
-        private frameDuration: number
-    ) {}
+    constructor(private frames: HTMLImageElement[], private frameDuration: number, public flipX: boolean = false) {}
 
     public update(dt: number): void {
         this.timer += dt;
-
         while (this.timer >= this.frameDuration) {
             this.timer -= this.frameDuration;
-            this.currentFrame =
-                (this.currentFrame + 1) % this.frameCount;
+            this.currentFrame = (this.currentFrame + 1) % this.frames.length;
         }
     }
 
+    public render(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number): void {
+        const img = this.frames[this.currentFrame];
+        ctx.save();
+        if (this.flipX) {
+            ctx.translate(x + width / 2, y + height / 2);
+            ctx.scale(-1, 1);
+            ctx.translate(-(x + width / 2), -(y + height / 2));
+        }
+        ctx.drawImage(img, x, y, width, height);
+        ctx.restore();
+    }
+
     public reset(): void {
-        this.timer = 0;
         this.currentFrame = 0;
+        this.timer = 0;
     }
 
     public getCurrentFrame(): number {
         return this.currentFrame;
-    }
-
-    public render(
-        ctx: CanvasRenderingContext2D,
-        assets: any,
-        x: number,
-        y: number,
-        width: number,
-        height: number,
-        flipX: boolean = false
-    ): void {
-        const img = assets.get(this.assetKey);
-        if (!img) return;
-
-        const frameX =
-            (this.startFrame + this.currentFrame) * width;
-
-        ctx.save();
-
-        if (flipX) {
-            ctx.translate(x + width, y);
-            ctx.scale(-1, 1);
-            ctx.drawImage(
-                img,
-                frameX,
-                0,
-                width,
-                height,
-                0,
-                0,
-                width,
-                height
-            );
-        } else {
-            ctx.drawImage(
-                img,
-                frameX,
-                0,
-                width,
-                height,
-                x,
-                y,
-                width,
-                height
-            );
-        }
-
-        ctx.restore();
     }
 }
