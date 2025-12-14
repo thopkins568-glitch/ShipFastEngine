@@ -3,63 +3,65 @@
 import { Entity } from './Entity';
 import { ParticleEffect } from '../../templates/starter/ParticleEffect';
 
-/**
- * Represents a game scene containing entities and managing their lifecycle.
- */
 export class Scene {
     public entities: Entity[] = [];
     public name: string = '';
+    public canvas: HTMLCanvasElement;
 
-    /**
-     * Adds an entity to the scene.
-     * Automatically injects scene reference if supported.
-     */
+    constructor(canvas?: HTMLCanvasElement) {
+        this.canvas = canvas || document.createElement('canvas');
+    }
+
     public addEntity(entity: Entity): void {
         this.entities.push(entity);
-
-        // Automatic scene injection (safe, opt-in)
-        if (typeof (entity as any).setScene === 'function') {
+        if ('setScene' in entity && typeof (entity as any).setScene === 'function') {
             (entity as any).setScene(this);
         }
     }
 
-    /**
-     * Removes an entity from the scene.
-     */
     public removeEntity(entity: Entity): void {
         const index = this.entities.indexOf(entity);
-        if (index !== -1) {
-            this.entities.splice(index, 1);
-        }
+        if (index !== -1) this.entities.splice(index, 1);
     }
 
-    /**
-     * Spawns a particle effect at a given position.
-     */
-    public addParticleEffect(
-        x: number,
-        y: number,
-        type: string = 'sparkle'
-    ): void {
-        const effect = ParticleEffect.create(x, y, type);
+    public addParticleEffect(x: number, y: number, effectType: string = 'sparkle'): void {
+        const effect = ParticleEffect.create(x, y, effectType);
         this.addEntity(effect);
     }
 
-    /**
-     * Returns all entities overlapping the given entity.
-     */
-    public getOverlap(entity: Entity): Entity[] {
-        return this.entities.filter(
-            e => e !== entity && this.checkOverlap(entity, e)
+    public getOverlappingEntities(entity: Entity): Entity[] {
+        return this.entities.filter(e => e !== entity && this.checkCollision(entity, e));
+    }
+
+    private checkCollision(a: Entity, b: Entity): boolean {
+        return !(
+            a.x + a.width < b.x ||
+            a.x > b.x + b.width ||
+            a.y + a.height < b.y ||
+            a.y > b.y + b.height
         );
     }
 
-    private checkOverlap(a: Entity, b: Entity): boolean {
-        return (
-            a.x < b.x + b.width &&
-            a.x + a.width > b.x &&
-            a.y < b.y + b.height &&
-            a.y + a.height > b.y
-        );
+    public getCanvasBounds(): { width: number; height: number } {
+        return { width: this.canvas.width, height: this.canvas.height };
+    }
+
+    public findEntityByTag(tag: string): Entity | undefined {
+        return this.entities.find(e => e.tag === tag);
+    }
+
+    public update(dt: number): void {
+        const entitiesToUpdate = [...this.entities];
+        for (const entity of entitiesToUpdate) {
+            if (!entity._shouldRemove) entity.update(dt, this);
+        }
+
+        this.entities = this.entities.filter(e => !e._shouldRemove);
+    }
+
+    public render(ctx: CanvasRenderingContext2D, assets: any): void {
+        for (const entity of this.entities) {
+            entity.render(ctx, assets);
+        }
     }
 }
