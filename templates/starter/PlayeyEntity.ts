@@ -12,31 +12,26 @@ export class PlayerEntity extends Entity {
     private moveSpeed = 200;
 
     private isGrounded = false;
-    private scene?: Scene;
 
-    private currentAnim: Animation | null = null;
-    private animations: Record<string, Animation> = {};
+    private animations: Record<string, Animation>;
+    private currentAnim: Animation;
 
     constructor(x: number, y: number) {
         super('player_run', x, y, 32, 64);
         this.isSolid = true;
 
-        this.animations.idle = new Animation('player_run', 0, 1, 100);
-        this.animations.run = new Animation('player_run', 1, 4, 100);
-        this.animations.jump = new Animation('player_run', 5, 1, 100);
-        this.animations.fall = new Animation('player_run', 6, 1, 100);
+        this.animations = {
+            idle: new Animation('player_run', 0, 1, 100),
+            run: new Animation('player_run', 1, 4, 100),
+            jump: new Animation('player_run', 5, 1, 100),
+            fall: new Animation('player_run', 6, 1, 100),
+        };
 
         this.currentAnim = this.animations.idle;
     }
 
-    public setScene(scene: Scene): void {
-        this.scene = scene;
-    }
-
-    public update(dt: number): void {
-        if (!this.scene) return;
-
-        const dtSeconds = dt / 1000;
+    public update(dt: number, scene: Scene): void {
+        const dtSec = dt / 1000;
         this.dx = 0;
 
         if (Input.isKeyDown('ArrowLeft') || Input.isKeyDown('a')) {
@@ -52,18 +47,30 @@ export class PlayerEntity extends Entity {
             this.isGrounded = false;
         }
 
-        this.dy += this.gravity * dtSeconds;
+        this.dy += this.gravity * dtSec;
         this.dy = Math.min(this.dy, 600);
 
-        this.x += this.dx * dtSeconds;
-        this.y += this.dy * dtSeconds;
+        const oldX = this.x;
+        const oldY = this.y;
 
-        const overlaps = this.scene.getOverlap(this);
-        const pickups = overlaps.filter(e => e instanceof CollectibleEntity) as CollectibleEntity[];
+        this.x += this.dx * dtSec;
+        if (scene.isColliding(this)) this.x = oldX;
 
-        for (const c of pickups) {
-            c.onPickup(this.scene);
+        this.y += this.dy * dtSec;
+        const hit = scene.getSolidCollision(this);
+        if (hit) {
+            this.y = oldY;
+            this.dy = 0;
+            this.isGrounded = oldY < hit.entity.y;
+        } else {
+            this.isGrounded = false;
         }
+
+        const pickups: CollectibleEntity[] = [];
+        for (const e of scene.getOverlap(this)) {
+            if (e instanceof CollectibleEntity) pickups.push(e);
+        }
+        pickups.forEach(p => p.onPickup(scene));
 
         if (!this.isGrounded) {
             this.currentAnim = this.dy < 0 ? this.animations.jump : this.animations.fall;
@@ -73,12 +80,18 @@ export class PlayerEntity extends Entity {
             this.currentAnim = this.animations.idle;
         }
 
-        this.currentAnim?.update(dt);
+        this.currentAnim.update(dt);
     }
 
     public render(ctx: CanvasRenderingContext2D, assets: any): void {
-        this.currentAnim
-            ? this.currentAnim.render(ctx, assets, this.x, this.y, this.width, this.height, this.flipX)
-            : super.render(ctx, assets);
+        this.currentAnim.render(
+            ctx,
+            assets,
+            this.x,
+            this.y,
+            this.width,
+            this.height,
+            this.flipX
+        );
     }
 }
